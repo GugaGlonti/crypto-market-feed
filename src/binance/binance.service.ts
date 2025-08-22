@@ -1,22 +1,23 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { OnModuleInit } from './../../node_modules/@nestjs/common/interfaces/hooks/on-init.interface.d';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { StreamsService } from '../streams/streams.service';
 import { BinanceTradeEvent } from './events/binance-trade.event';
 import { BinanceTrade } from './dto/binance-trade.dto';
 import { BinanceTradePipe } from './pipes/binance-trade.pipe';
 
 @Injectable()
-export class BinanceService {
+export class BinanceService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BinanceService.name);
+
+  private readonly binanceUrl = 'wss://stream.binance.com:9443/ws';
+  private readonly trades = ['ltcusdt@trade'];
 
   constructor(
     private readonly streamsService: StreamsService,
     private readonly binanceTradePipe: BinanceTradePipe,
   ) {}
 
-  private readonly binanceUrl = 'wss://stream.binance.com:9443/ws';
-  private readonly trades = ['ltcusdt@trade'];
-
-  public onModuleInit() {
+  onModuleInit() {
     this.streamsService.registerStream<BinanceTradeEvent>(
       'binance',
       `${this.binanceUrl}/${this.trades.join(`/`)}`,
@@ -24,7 +25,7 @@ export class BinanceService {
     );
   }
 
-  public onModuleDestroy() {
+  onModuleDestroy() {
     this.streamsService.unregisterStream('binance');
   }
 
