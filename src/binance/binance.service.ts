@@ -15,12 +15,6 @@ export class BinanceService {
       `${this.binanceUrl}/${this.trades.join(`/`)}`,
       this.handleBinanceStream.bind(this),
     );
-
-    this.streamsService.registerStream<BinanceTradeEvent>(
-      'binance',
-      `${this.binanceUrl}/${this.trades.join(`/`)}`,
-      this.handleBinanceStream.bind(this),
-    );
   }
 
   public onModuleDestroy() {
