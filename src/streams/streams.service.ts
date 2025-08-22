@@ -11,14 +11,14 @@ export class StreamsService implements OnModuleDestroy {
     url: string,
     handler: (data: E) => void,
   ): void {
-    const ws = new WebSocket(url);
-    this.sockets[socketId] = ws;
+    this.sockets[socketId] = new WebSocket(url);
 
-    ws.onopen = () =>
+    this.sockets[socketId].onopen = () =>
       this.logger.log(`WebSocket with ID: ${socketId} established`);
-    ws.onclose = () => this.logger.log(`WebSocket with ID: ${socketId} closed`);
+    this.sockets[socketId].onclose = () =>
+      this.logger.log(`WebSocket with ID: ${socketId} closed`);
 
-    ws.onmessage = (event: MessageEvent<string>) => {
+    this.sockets[socketId].onmessage = (event: MessageEvent<string>) => {
       try {
         handler(JSON.parse(event.data) as E);
       } catch {
