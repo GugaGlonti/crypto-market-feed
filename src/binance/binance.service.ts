@@ -1,5 +1,9 @@
-import { OnModuleInit } from './../../node_modules/@nestjs/common/interfaces/hooks/on-init.interface.d';
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { StreamsService } from '../streams/streams.service';
 import { BinanceTradeEvent } from './events/binance-trade.event';
 import { BinanceTrade } from './dto/binance-trade.dto';
