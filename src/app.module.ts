@@ -7,6 +7,7 @@ import { StreamsModule } from './streams/streams.module';
 import { ConfigModule } from '@nestjs/config';
 import { EnvironmentService } from './environment/environment.service';
 import { EnvironmentModule } from './environment/environment.module';
+import { KafkaModule } from './kafka/kafka.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { EnvironmentModule } from './environment/environment.module';
       ignoreEnvFile: process.env.NODE_ENV === 'production',
     }),
     EnvironmentModule,
+    KafkaModule,
   ],
   controllers: [AppController],
   providers: [AppService, StreamsService, EnvironmentService],

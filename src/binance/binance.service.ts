@@ -9,6 +9,7 @@ import { EnvironmentService } from './../environment/environment.service';
 import { BinanceTrade } from './dto/binance-trade.dto';
 import { BinanceTradeEvent } from './events/binance-trade.event';
 import { BinanceTradePipe } from './pipes/binance-trade.pipe';
+import { KafkaService } from '../kafka/kafka.service';
 
 @Injectable()
 export class BinanceService implements OnModuleInit, OnModuleDestroy {
@@ -19,17 +20,15 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly streamsService: StreamsService,
     private readonly binanceTradePipe: BinanceTradePipe,
-    private readonly environmentService: EnvironmentService,
+    private readonly env: EnvironmentService,
+    private readonly kafkaService: KafkaService,
   ) {
-    this.binanceUrl = this.environmentService.requiredString('BINANCE_URL');
-    this.binanceTrades =
-      this.environmentService.requiredString('BINANCE_TRADES');
+    this.binanceUrl = this.env.requiredString('BINANCE_URL');
+    this.binanceTrades = this.env.requiredString('BINANCE_TRADES');
   }
 
-  onModuleInit() {
-    this.logger.log(
-      `Connecting to Binance: ${this.binanceUrl}/${this.binanceTrades}`,
-    );
+  async onModuleInit() {
+    await this.kafkaService.createTopic('binance_trades');
     this.streamsService.registerStream<BinanceTradeEvent>(
       'binance',
       `${this.binanceUrl}/${this.binanceTrades}`,
@@ -46,6 +45,16 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
 
   private handleBinanceStream(data: BinanceTradeEvent) {
     const binanceTrade: BinanceTrade = this.binanceTradePipe.transform(data);
-    this.logger.log(`Received trade: ${JSON.stringify(binanceTrade)}`);
+    this.logger.log(
+      `For incoming trade: ${JSON.stringify(binanceTrade)} to Kafka`,
+    );
+    this.kafkaService
+      .sendMessage('binance_trades', binanceTrade)
+      .then(() =>
+        this.logger.log(`Sent trade to Kafka: ${JSON.stringify(binanceTrade)}`),
+      )
+      .catch((error) => {
+        this.logger.error(`Failed to send trade to Kafka: ${error}`);
+      });
   }
 }
