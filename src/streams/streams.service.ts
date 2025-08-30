@@ -27,8 +27,15 @@ export class StreamsService implements OnModuleDestroy {
         resolve();
       };
 
-      this.sockets[socketId].onmessage = (event: MessageEvent<string>) =>
-        handler(JSON.parse(event.data) as E);
+      this.sockets[socketId].onmessage = (event: MessageEvent<string>) => {
+        if (!event || !event.data) {
+          this.logger.error(
+            `Received empty message for WebSocket ID: ${socketId}`,
+          );
+          return;
+        }
+        void handler(JSON.parse(event.data) as E);
+      };
 
       this.sockets[socketId].onclose = () => {
         this.logger.log(`WebSocket with ID: ${socketId} closed`);
