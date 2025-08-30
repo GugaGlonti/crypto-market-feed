@@ -29,7 +29,7 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     await this.kafkaService.createTopic('binance_trades');
-    this.streamsService.registerStream<BinanceTradeEvent>(
+    await this.streamsService.registerStream<BinanceTradeEvent>(
       'binance',
       `${this.binanceUrl}/${this.binanceTrades}`,
       this.handleBinanceStream.bind(this),
@@ -43,18 +43,11 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
     this.streamsService.unregisterStream('binance');
   }
 
-  private handleBinanceStream(data: BinanceTradeEvent) {
+  private async handleBinanceStream(data: BinanceTradeEvent): Promise<void> {
     const binanceTrade: BinanceTrade = this.binanceTradePipe.transform(data);
-    this.logger.log(
+    this.logger.debug(
       `For incoming trade: ${JSON.stringify(binanceTrade)} to Kafka`,
     );
-    this.kafkaService
-      .sendMessage('binance_trades', binanceTrade)
-      .then(() =>
-        this.logger.log(`Sent trade to Kafka: ${JSON.stringify(binanceTrade)}`),
-      )
-      .catch((error) => {
-        this.logger.error(`Failed to send trade to Kafka: ${error}`);
-      });
+    await this.kafkaService.sendMessage('binance_trades', binanceTrade);
   }
 }

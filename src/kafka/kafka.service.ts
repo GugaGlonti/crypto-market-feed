@@ -4,14 +4,8 @@ import {
   OnModuleDestroy,
   Logger,
 } from '@nestjs/common';
-import {
-  Admin,
-  Kafka,
-  KafkaConfig,
-  Partitioners,
-  Producer,
-  ProducerConfig,
-} from 'kafkajs';
+import { Admin, Kafka, Partitioners, Producer } from 'kafkajs';
+import { EnvironmentService } from '../environment/environment.service';
 
 @Injectable()
 export class KafkaService implements OnModuleInit, OnModuleDestroy {
@@ -20,19 +14,18 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   private producer: Producer;
   private admin: Admin;
 
-  private readonly kafkaConfig: KafkaConfig = {
-    clientId: 'crypto-market-feed',
-    brokers: ['localhost:9092'],
-  };
-
-  private readonly producerConfig: ProducerConfig = {
-    createPartitioner: Partitioners.LegacyPartitioner,
-  };
+  constructor(private readonly env: EnvironmentService) {
+    this.kafka = new Kafka({
+      clientId: 'crypto-market-feed',
+      brokers: [env.requiredString('KAFKA_BROKER')],
+    });
+    this.producer = this.kafka.producer({
+      createPartitioner: Partitioners.LegacyPartitioner,
+    });
+    this.admin = this.kafka.admin({});
+  }
 
   async onModuleInit() {
-    this.kafka = new Kafka(this.kafkaConfig);
-    this.producer = this.kafka.producer(this.producerConfig);
-    this.admin = this.kafka.admin();
     await this.producer.connect();
   }
 
@@ -40,20 +33,23 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     await this.producer.disconnect();
   }
 
-  async sendMessage(topic: string, message: any, key?: string) {
-    try {
-      const value = JSON.stringify(message);
-      const timestamp = Date.now().toString();
+  async sendMessage(
+    topic: string,
+    message: any,
+    options?: {
+      key?: string;
+      onSuccess?: () => void;
+      onError?: (error: Error) => void;
+    },
+  ) {
+    const value = JSON.stringify(message);
+    const timestamp = Date.now().toString();
+    const { key } = options || {};
 
-      await this.producer.send({
-        topic,
-        messages: [{ key: key || null, value, timestamp }],
-      });
-      this.logger.log(`Message sent successfully to topic ${topic}`);
-    } catch (error) {
-      this.logger.error(`Failed to send message to topic ${topic}:`, error);
-      throw error;
-    }
+    await this.producer.send({
+      topic,
+      messages: [{ key: key || null, value, timestamp }],
+    });
   }
 
   async createTopic(topic: string, numPartitions = 1, replicationFactor = 1) {
