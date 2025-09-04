@@ -1,0 +1,33 @@
+# Crypto Market Feed
+
+A NestJS microservice for streaming cryptocurrency market data.  
+It captures real-time market data from various cryptocurrency exchanges and feeds it into Kafka topics for further processing.
+This microservice is designed to recreate a high-throughput, low-latency data pipeline for cryptocurrency market data.
+
+## Project setup
+
+Under the hood, this microservice is a NestJS application.
+
+```bash
+npm install
+```
+
+## Compile and run the project
+
+```bash
+npm run start # development
+
+npm run start:dev # watch mode
+
+npm run start:prod # production mode
+```
+
+## Run tests
+
+```bash
+npm run test # unit tests
+
+npm run test:e2e # e2e tests
+
+npm run test:cov # test coverage
+```
