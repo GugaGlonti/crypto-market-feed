@@ -28,7 +28,12 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
+    this.logger.log('Initializing BinanceService...');
+
+    this.logger.log('Creating Kafka topic: binance_trades');
     await this.kafkaService.createTopic('binance_trades');
+
+    this.logger.log('Registering Binance stream and binding handler...');
     await this.streamsService.registerStream<BinanceTradeEvent>(
       'binance',
       `${this.binanceUrl}/${this.binanceTrades}`,
@@ -37,17 +42,27 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleDestroy() {
-    this.logger.log(
-      `Disconnecting from Binance: ${this.binanceUrl}/${this.binanceTrades}`,
-    );
+    const url = `${this.binanceUrl}/${this.binanceTrades}`;
+    this.logger.log(`Disconnecting from Binance: ${url}`);
     this.streamsService.unregisterStream('binance');
   }
 
   private async handleBinanceStream(data: BinanceTradeEvent): Promise<void> {
     const binanceTrade: BinanceTrade = this.binanceTradePipe.transform(data);
-    this.logger.debug(
-      `For incoming trade: ${JSON.stringify(binanceTrade)} to Kafka`,
-    );
     await this.kafkaService.sendMessage('binance_trades', binanceTrade);
+    this.incrementMessagesSent();
+  }
+
+  private messagesSent: bigint = BigInt(0);
+  private smallIncrement: number = 0;
+  private readonly SMALL_INCREMENT_THRESHOLD = 100;
+
+  private incrementMessagesSent(): void {
+    this.smallIncrement += 1;
+    if (this.smallIncrement >= this.SMALL_INCREMENT_THRESHOLD) {
+      this.messagesSent += BigInt(this.SMALL_INCREMENT_THRESHOLD);
+      this.smallIncrement = 0;
+      this.logger.log(`Messages sent: ${this.messagesSent}`);
+    }
   }
 }

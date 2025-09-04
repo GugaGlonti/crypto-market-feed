@@ -15,21 +15,26 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   private admin: Admin;
 
   constructor(private readonly env: EnvironmentService) {
+    this.logger.log('Initializing KafkaService...');
     this.kafka = new Kafka({
       clientId: 'crypto-market-feed',
       brokers: [env.requiredString('KAFKA_BROKER')],
     });
+    this.logger.log('Initializing Kafka producer...');
     this.producer = this.kafka.producer({
       createPartitioner: Partitioners.LegacyPartitioner,
     });
+    this.logger.log('Initializing Kafka admin...');
     this.admin = this.kafka.admin({});
   }
 
   async onModuleInit() {
+    this.logger.log('Connecting to Kafka broker...');
     await this.producer.connect();
   }
 
   async onModuleDestroy() {
+    this.logger.log('Disconnecting from Kafka broker...');
     await this.producer.disconnect();
   }
 
@@ -42,25 +47,32 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       onError?: (error: Error) => void;
     },
   ) {
-    const value = JSON.stringify(message);
-    const timestamp = Date.now().toString();
-    const { key } = options || {};
-
     await this.producer.send({
       topic,
-      messages: [{ key: key || null, value, timestamp }],
+      messages: [
+        {
+          key: options?.key || null,
+          value: JSON.stringify(message),
+          timestamp: Date.now().toString(),
+        },
+      ],
     });
   }
 
   async createTopic(topic: string, numPartitions = 1, replicationFactor = 1) {
+    this.logger.log(`Creating Kafka topic: ${topic}`);
+
+    this.logger.log(`Connecting admin client...`);
     await this.admin.connect();
 
+    this.logger.log(`Checking if topic ${topic} exists...`);
     const existingTopics = await this.admin.listTopics();
     if (existingTopics.includes(topic)) {
       this.logger.log(`Topic ${topic} already exists`);
       return await this.admin.disconnect();
     }
 
+    this.logger.log(`Creating topic ${topic}...`);
     await this.admin.createTopics({
       topics: [
         {
@@ -72,6 +84,8 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       ],
     });
 
+    this.logger.log(`Topic ${topic} created successfully`);
+    this.logger.log(`Disconnecting admin client...`);
     await this.admin.disconnect();
   }
 }

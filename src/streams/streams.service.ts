@@ -1,15 +1,28 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 
 @Injectable()
-export class StreamsService implements OnModuleDestroy {
+export class StreamsService implements OnModuleDestroy, OnModuleInit {
   private readonly logger = new Logger(StreamsService.name);
 
   private sockets: Record<string, WebSocket> = {};
   private intentionalCloses = new Set<string>();
   private reconnectAttempts: Record<string, number> = {};
 
+  onModuleInit() {
+    this.logger.log('StreamsService initialized');
+  }
+
   onModuleDestroy() {
-    for (const name in this.sockets) this.unregisterStream(name);
+    this.logger.log('Shutting down StreamsService...');
+    for (const name in this.sockets) {
+      this.logger.log(`Unregistering WebSocket with ID: ${name}`);
+      this.unregisterStream(name);
+    }
   }
 
   public registerStream<E>(
@@ -17,6 +30,8 @@ export class StreamsService implements OnModuleDestroy {
     url: string,
     handler: (data: E) => Promise<void>,
   ): Promise<void> {
+    this.logger.log(`Registering WebSocket with ID: ${socketId}`);
+
     return new Promise((resolve) => {
       this.logger.log(`Connecting WebSocket with ID: ${socketId}`);
       this.sockets[socketId] = new WebSocket(url);
@@ -29,10 +44,9 @@ export class StreamsService implements OnModuleDestroy {
 
       this.sockets[socketId].onmessage = (event: MessageEvent<string>) => {
         if (!event || !event.data) {
-          this.logger.error(
+          return this.logger.error(
             `Received empty message for WebSocket ID: ${socketId}`,
           );
-          return;
         }
         void handler(JSON.parse(event.data) as E);
       };
